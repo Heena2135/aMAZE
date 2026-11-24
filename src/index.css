@@ -1,0 +1,19 @@
+:root {
+  font: 16px/1.5 system-ui, sans-serif;
+  color-scheme: dark;
+  --space: #101522;
+  --spacecraft: #292d3e;
+  --dust: #b7a38b;
+  --starlight: #ffc66d;
+  --signal: #b9a5e8;
+  --line: #40465d;
+  --mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  background: var(--space);
+  color: #f3effb;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 280px; margin: 0; }
+h1, h2, p, dl, dd { margin: 0; }
+button, kbd { font-family: var(--mono); }
+button:focus-visible { outline: 2px solid var(--starlight); outline-offset: 3px; }
