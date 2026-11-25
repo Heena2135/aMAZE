@@ -1,3 +1,4 @@
+import { ResearchExport } from '../components/ResearchExport'
 import { useState } from 'react'
 import type { Profile } from '../analytics/PlayerProfile'
 
@@ -11,11 +12,11 @@ interface Props {
 export function GameSettings({ profile, onChange, onResetLearning, onClearProgress }: Props) {
   const [confirmation, setConfirmation] = useState<'learning' | 'all' | null>(null)
   const { settings } = profile
-  const exportUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(profile, null, 2))
 
   return (
-    <section className="panel settings" aria-labelledby="settings-title">
-      <h2 id="settings-title">Settings</h2>
+    <section className="settings terminal" aria-labelledby="settings-title">
+      <p className="eyebrow">VESSEL SYSTEMS</p>
+      <h1 id="settings-title">Settings</h1>
       <label>Next experiment mode
         <select value={settings.mode} onChange={(event) =>
           onChange({ ...settings, mode: event.target.value === 'standard' ? 'standard' : 'adaptive' })}>
@@ -28,7 +29,7 @@ export function GameSettings({ profile, onChange, onResetLearning, onClearProgre
       <label><input type="checkbox" checked={settings.reducedMotion} onChange={(event) =>
         onChange({ ...settings, reducedMotion: event.target.checked })} /> Reduce motion</label>
       <p>Completed experiments and learning data are stored in this browser.</p>
-      <a className="action-link" href={exportUrl} download="amaze-research.json">Export research data</a>
+      <ResearchExport profile={profile} />
       {confirmation ? <div className="settings-confirm">
         <p>{confirmation === 'all' ? 'Clear all progress and restore settings?' : 'Reset the prediction model and adaptive difficulty? Completed experiments are kept.'}</p>
         <button type="button" onClick={() => {
@@ -37,7 +38,7 @@ export function GameSettings({ profile, onChange, onResetLearning, onClearProgre
           setConfirmation(null)
         }}>Confirm reset</button>
         <button type="button" onClick={() => setConfirmation(null)}>Cancel</button>
-      </div> : <div className="screen-actions">
+      </div> : <div className="action-row">
         <button type="button" onClick={() => setConfirmation('learning')}>Reset learning</button>
         <button type="button" onClick={() => setConfirmation('all')}>Clear all progress</button>
       </div>}

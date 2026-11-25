@@ -16,7 +16,9 @@ You're a human aboard a research vessel, navigating chambers designed by **Vey**
 
 > **Active development**
 >
-> The technical MVP is implemented, including the playable campaign, procedural generation, behavioral data pipeline, statistical predictions, and local progress. An immersive visual redesign is in progress.
+> The technical MVP is implemented, including the playable campaign, procedural generation, behavioral data pipeline, statistical predictions, and local progress. The immersive redesign adds a pixel-art title, a playable first encounter, stage-specific spacecraft chambers, and Vey’s research journal. Visual polish and device testing are ongoing.
+
+[View gameplay screenshots](docs/SCREENSHOTS.md)
 
 ## The five experiments
 
@@ -43,7 +45,7 @@ You're a human aboard a research vessel, navigating chambers designed by **Vey**
 1. **Capture and validate.** Movement commands become structured events with session and level IDs, a sequence number, a timestamp, positions, and an outcome. A ring buffer keeps the latest 256 raw events in memory.
 2. **Aggregate.** The session tracks collisions, revisits, backtracking, dead-end recovery, timing, junction choices, and route efficiency. Collision rate is collisions divided by all movement attempts. Route efficiency is BFS-optimal moves divided by actual successful moves.
 3. **Learn.** At junctions, the model uses the previous junction decision to estimate the next relative turn (left, right, straight, or reverse). For each legal turn, add-one Laplace smoothing divides its count plus one by the sum of legal counts plus the number of legal options. Sparse conditional rows fall back to marginal counts. The model abstains when it lacks sufficient samples or when its top two choices are too close. It scores each prediction before learning from the actual decision.
-4. **Select.** From Adaptation onward, adaptive mode generates nine candidates using seeded DFS and checks them with BFS. It scores solvable layouts by distance from a target route length, dead-end cost, and whether the optimal route diverges from confident predictions. Recent completion performance nudges difficulty within bounds. The selected layout stays fixed during play.
+4. **Select.** In Observation, adaptive mode checks up to five seeded layouts for a junction on the shortest route, allowing at most six extra moves versus the original layout. From Adaptation onward, adaptive mode generates nine candidates using seeded DFS and checks them with BFS. It scores solvable layouts by distance from a target route length, dead-end cost, and whether the optimal route diverges from confident predictions. Recent completion performance nudges difficulty within bounds. The selected layout stays fixed during play.
 5. **Explain.** The research report shows route efficiency, revisits, turn tendencies, prediction results, and selection history. Model-based results appear after their sample thresholds are met.
 
 ### Architecture
@@ -65,7 +67,7 @@ flowchart LR
   Candidates --> Experiment
 ```
 
-See [LEARNING.md](LEARNING.md) for worked examples and complexity analysis, and [DEVELOPMENT.md](DEVELOPMENT.md) for implementation decisions and validation.
+See the [architecture guide](docs/ARCHITECTURE.md) and [contributor instructions](CONTRIBUTING.md) for module boundaries and workflow. See [LEARNING.md](LEARNING.md) for worked examples and complexity analysis, and [DEVELOPMENT.md](DEVELOPMENT.md) for implementation decisions and validation.
 
 ## Run locally
 
@@ -82,7 +84,7 @@ Open the URL Vite prints. For a production preview, run `npm run build` followed
 
 ### Play
 
-1. Enter the laboratory and begin the experiment. Move the lavender player to the gold exit with the arrow keys, WASD, or the on-screen directional buttons.
+1. Choose **New Game** or **Continue**, then begin the experiment. Move the lavender player to the gold exit with the arrow keys, WASD, or the on-screen directional buttons.
 2. Pause with Escape or the pause button. Restart restores the current layout and resets the live counters. The optional hint marks one tile along the shortest remaining route.
 3. After winning, prepare the next experiment. Advancing requires completing the current stage and meeting a junction observation threshold, reaching 75% route efficiency, or completing a second fresh layout in that stage. Unlocked stages can be replayed.
 4. Select **Standard** in Settings to compare layouts generated independently of your profile. Gameplay in either mode can contribute observations to the local profile.
@@ -105,7 +107,7 @@ GitHub Actions runs these checks after a clean install. Relative asset URLs let 
 ## Limits and development roadmap
 
 - **Implemented:** Five playable stages, seeded generation, BFS validation, gameplay analytics, Markov prediction, adaptive selection, and local persistence.
-- **In progress:** The immersive visual redesign, with a focus on the spacecraft setting and Vey’s presentation.
+- **In progress:** Visual polish and physical-device testing for the spacecraft scenes and controls.
 - **Future work:** Compare the model against a legal-choice baseline, add a nonvisual route interface, and validate usability on physical devices.
 
 The model uses a small set of junction states, so it can confound maze geometry with player preference. Reported hit rate covers only the decisions the model chose to predict. Personal bests are grouped by maze size and mode, so they compare different layouts. Progress is specific to the browser origin, and interrupted experiments do not resume after reload. Canvas exposes player, exit, and hint coordinates through an accessible label. Full nonvisual maze navigation is still a planned improvement.

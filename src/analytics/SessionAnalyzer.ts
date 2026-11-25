@@ -6,36 +6,9 @@ import type { Model, Turn } from '../intelligence/MarkovModel'
 import type { Direction } from '../types/Direction'
 import type { Position } from '../types/Position'
 
-export interface SessionMetrics {
-  moves: number
-  collisions: number
-  revisits: number
-  backtracks: number
-  directionChanges: number
-  deadEnds: number
-  deadEndRecoveries: number
-  deadEndRecoveryMs: number
-  junctions: number
-  hints: number
-  idleMs: number
-  durationMs: number
-  decisionMs: number
-  decisionSamples: number
-  predictions: number
-  correct: number
-  predictionsConfidence: number
-  directions: Record<Direction, number>
-  optimalMoves: number
-}
+import { emptyMetrics, type SessionMetrics } from './MetricsCalculator.ts'
 
-export function emptyMetrics(optimalMoves = 0): SessionMetrics {
-  return {
-    moves: 0, collisions: 0, revisits: 0, backtracks: 0, directionChanges: 0,
-    deadEnds: 0, deadEndRecoveries: 0, deadEndRecoveryMs: 0, junctions: 0, hints: 0, idleMs: 0, durationMs: 0, decisionMs: 0,
-    decisionSamples: 0, predictions: 0, correct: 0, predictionsConfidence: 0,
-    directions: { up: 0, down: 0, left: 0, right: 0 }, optimalMoves,
-  }
-}
+const IDLE_THRESHOLD_MS = 15_000
 
 const cellKey = ({ x, y }: Position) => `${x},${y}`
 
@@ -72,7 +45,7 @@ export class SessionAnalyzer {
 
   private recordIdle(now: number): void {
     const elapsed = now - this.lastAction
-    if (elapsed >= 15_000) {
+    if (elapsed >= IDLE_THRESHOLD_MS) {
       this.tracker.record({ type: 'idle', durationMs: elapsed }, now)
       this.metrics.idleMs += elapsed
     }
@@ -131,7 +104,7 @@ export class SessionAnalyzer {
     const heading = this.heading
     if (junction && heading) {
       this.metrics.junctions++
-      if (decisionMs < 15_000) {
+      if (decisionMs < IDLE_THRESHOLD_MS) {
         this.metrics.decisionMs += decisionMs
         this.metrics.decisionSamples++
       }

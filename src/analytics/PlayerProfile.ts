@@ -1,6 +1,4 @@
-import { summarize } from './MetricsCalculator.ts'
-import { emptyMetrics } from './SessionAnalyzer.ts'
-import type { SessionMetrics } from './SessionAnalyzer'
+import { emptyMetrics, summarize, type SessionMetrics } from './MetricsCalculator.ts'
 import { emptyModel } from '../intelligence/MarkovModel.ts'
 import type { Model } from '../intelligence/MarkovModel'
 

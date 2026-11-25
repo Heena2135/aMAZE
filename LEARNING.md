@@ -39,3 +39,5 @@ The hook owns an experiment instance and translates commands into updated state 
 ## Companion dialogue and progression
 
 The experiment maps outcomes to dialogue signals, and the dialogue engine picks from authored variations with a cooldown. For example, repeated wall hits can prompt a suggestion to try another direction. Transition outcomes drive the message selection in constant time. Progression uses explicit stage gates and the profile carries unlocked stages across visits. Difficulty adjusts by at most 0.5 after crediting an eligible run, which limits the effect of one unusual performance.
+
+The Canvas rasterizes the static tile layer once per mounted chamber. Foreground frames reuse that prepainted layer while animating the astronaut and airlock. This avoids recomputing tile details per move but still copies the frame for display.

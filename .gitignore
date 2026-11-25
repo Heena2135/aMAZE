@@ -28,3 +28,12 @@ dist-ssr
 .env.*
 !.env.example
 coverage/
+
+# Temporary files and macOS metadata
+tmp/
+temp/
+*.tmp
+*.bak
+.AppleDouble
+.LSOverride
+._*

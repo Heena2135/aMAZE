@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { freshProfile } from '../analytics/PlayerProfile.ts'
 import type { Profile } from '../analytics/PlayerProfile'
-import { Experiment } from '../engine/Experiment.ts'
-import { createLevel } from '../engine/LevelManager.ts'
+import { Experiment } from '../game/Experiment.ts'
+import { createLevel } from '../game/LevelManager.ts'
 import { loadProfile, saveProfile } from '../storage/ProfileStorage.ts'
+import { useGameAudio } from './useGameAudio'
 import type { Direction } from '../types/Direction'
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 32)
@@ -20,32 +21,12 @@ function createExperiment(profile: Profile, stage?: number) {
   return new Experiment(createLevel(profile, randomSeed(), stage), profile)
 }
 
-function playTone(contextRef: { current: AudioContext | null }, victory: boolean) {
-  try {
-    const audio = contextRef.current ??= new AudioContext()
-    void audio.resume().catch(() => {})
-    const tone = audio.createOscillator()
-    const gain = audio.createGain()
-    const now = audio.currentTime
-    tone.type = 'triangle'
-    tone.frequency.setValueAtTime(victory ? 440 : 146, now)
-    tone.frequency.exponentialRampToValueAtTime(victory ? 660 : 95, now + 0.14)
-    gain.gain.setValueAtTime(0.075, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18)
-    tone.connect(gain).connect(audio.destination)
-    tone.start(now)
-    tone.stop(now + 0.18)
-  } catch {
-    // Audio can be unavailable in embedded browsers.
-  }
-}
-
 export function useGameEngine() {
   const [profile, setProfile] = useState(storedProfile)
   const [experiment, setExperiment] = useState(() => createExperiment(profile))
   const [view, setView] = useState(() => experiment.view())
   const [storageAvailable, setStorageAvailable] = useState(true)
-  const audio = useRef<AudioContext | null>(null)
+  const sound = useGameAudio(profile.settings.mute)
 
   useEffect(() => {
     let available = false
@@ -58,11 +39,6 @@ export function useGameEngine() {
     return () => window.clearTimeout(notice)
   }, [profile])
 
-  useEffect(() => () => {
-    void audio.current?.close().catch(() => {})
-    audio.current = null
-  }, [])
-
   const start = useCallback(() => {
     experiment.start(performance.now())
     setView(experiment.view())
@@ -74,16 +50,23 @@ export function useGameEngine() {
   }, [experiment])
 
   const move = useCallback((direction: Direction) => {
+    const previousMessage = experiment.message
     const wasPlaying = experiment.status === 'playing'
     const outcome = experiment.move(direction, profile, performance.now())
     const next = experiment.view()
     setView(next)
     if (outcome.profile !== profile) setProfile(outcome.profile)
-    if (!profile.settings.mute && wasPlaying && (!outcome.moved || next.snapshot.status === 'won')) {
-      playTone(audio, next.snapshot.status === 'won')
+    if (wasPlaying) {
+      sound(outcome.moved ? 'step' : 'collision')
+      if (outcome.moved && next.snapshot.status === 'won') {
+        sound('airlock')
+        sound('completion')
+      } else if (next.message !== previousMessage && outcome.moved) {
+        sound('communication')
+      }
     }
     return outcome.moved
-  }, [experiment, profile])
+  }, [experiment, profile, sound])
 
   function reset() {
     experiment.reset(profile, performance.now())
@@ -109,8 +92,9 @@ export function useGameEngine() {
     }
   }
 
-  function clearProgress() {
+  function clearProgress(keepSettings = false) {
     const cleared = freshProfile()
+    if (keepSettings) cleared.settings = { ...profile.settings }
     setProfile(cleared)
     replaceExperiment(cleared)
   }
@@ -122,7 +106,9 @@ export function useGameEngine() {
   }
 
   return {
-    ...view, level: experiment.level, profile, storageAvailable, start, pause, move, reset, hint,
+    ...view, level: experiment.level, profile, storageAvailable, sound, start, pause, move, reset, hint,
     nextLevel: (stage?: number) => replaceExperiment(profile, stage), updateSettings, clearLearning, clearProgress,
   }
 }
+
+export type GameSession = ReturnType<typeof useGameEngine>

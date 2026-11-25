@@ -1,107 +1,177 @@
 import { useEffect, useRef } from 'react'
-import type { Position } from '../types/Position'
+import { art } from '../assets/registry'
+import { chamberPalettes, paintTile, TILE } from '../assets/tiles/chamber'
+import type { Direction } from '../types/Direction'
 import type { GameSnapshot } from '../types/GameSnapshot'
+import type { Position } from '../types/Position'
 
-interface MazeCanvasProps {
+interface Props {
   snapshot: GameSnapshot
+  layout: GameSnapshot['grid']
   hintCell?: Position
+  facing: Direction
+  stage: number
+  reducedMotion: boolean
 }
 
-export function MazeCanvas({ snapshot, hintCell }: MazeCanvasProps) {
+const WALK_MS = 145
+const AIRLOCK_MS = 550
+const CELEBRATION_MS = 750
+const LIGHT_PHASE_MS = 380
+const FRAME_INTERVAL_MS = 48
+
+const spriteRow: Record<Direction, number> = { down: 0, right: 1, left: 2, up: 3 }
+
+export function MazeCanvas({ snapshot, layout, hintCell, facing, stage, reducedMotion }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const { grid, playerPosition, exitPosition } = snapshot
-  const rows = grid.length
-  const columns = grid[0].length
+  const sprite = useRef<HTMLImageElement | null>(null)
+  const tiles = useRef<HTMLCanvasElement | null>(null)
+  const previous = useRef<Position | undefined>(undefined)
+  const { playerPosition: { x: playerX, y: playerY }, exitPosition: { x: exitX, y: exitY }, status } = snapshot
+  const hintX = hintCell?.x
+  const hintY = hintCell?.y
+  const rows = layout.length
+  const columns = layout[0].length
+
+  useEffect(() => {
+    const image = new Image()
+    image.src = art.astronaut
+    sprite.current = image
+  }, [])
+
+  useEffect(() => {
+    const backdrop = document.createElement('canvas')
+    backdrop.width = columns * TILE
+    backdrop.height = rows * TILE
+    const context = backdrop.getContext('2d')
+    if (!context) return
+    layout.forEach((row, y) => row.forEach((cell, x) =>
+      paintTile(context, x, y, cell === 1, stage, layout[y + 1]?.[x] === 0),
+    ))
+    tiles.current = backdrop
+  }, [layout, columns, rows, stage])
 
   useEffect(() => {
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
-    if (!canvas || !context) return
+    const backdrop = tiles.current
+    if (!canvas || !context || !backdrop) return
 
-    function draw() {
-      if (!canvas || !context) return
+    const layer = document.createElement('canvas')
+    layer.width = columns * TILE
+    layer.height = rows * TILE
+    const pixels = layer.getContext('2d')
+    if (!pixels) return
+    const playerPosition = { x: playerX, y: playerY }
+    const last = previous.current
+    previous.current = playerPosition
+    const adjacent = last && Math.abs(last.x - playerPosition.x) + Math.abs(last.y - playerPosition.y) === 1
+    const origin = adjacent && (status === 'playing' || status === 'won') ? last : playerPosition
+    const beginning = performance.now()
+    const prefs = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let lastFrame = 0
+    let frameId = 0
+    let bounds = canvas.getBoundingClientRect()
 
-      const { width, height } = canvas.getBoundingClientRect()
-      if (width === 0 || height === 0) return
-
-      const scale = window.devicePixelRatio || 1
-      const pixelWidth = Math.round(width * scale)
-      const pixelHeight = Math.round(height * scale)
+    function draw(now = performance.now()) {
+      if (!canvas || !context || !pixels || !backdrop) return
+      const { width, height } = bounds
+      if (!width || !height) return
+      const ratio = window.devicePixelRatio || 1
+      const pixelWidth = Math.round(width * ratio)
+      const pixelHeight = Math.round(height * ratio)
       if (canvas.width !== pixelWidth) canvas.width = pixelWidth
       if (canvas.height !== pixelHeight) canvas.height = pixelHeight
+      const still = reducedMotion || prefs.matches
+      const elapsed = now - beginning
+      const walk = still ? 1 : Math.min(1, elapsed / WALK_MS)
+      const phase = still ? 0 : Math.floor(now / LIGHT_PHASE_MS) % 2
+      pixels.drawImage(backdrop, 0, 0)
 
-      context.setTransform(pixelWidth / width, 0, 0, pixelHeight / height, 0, 0)
-      context.clearRect(0, 0, width, height)
-      context.lineWidth = 1
-
-      const cell = Math.min(width / columns, height / rows)
-      const offsetX = (width - columns * cell) / 2
-      const offsetY = (height - rows * cell) / 2
-      context.translate(offsetX, offsetY)
-
-      grid.forEach((row, y) => {
-        row.forEach((value, x) => {
-          const left = x * cell
-          const top = y * cell
-
-          context.fillStyle = value === 1 ? '#292D3E' : '#101522'
-          context.fillRect(left, top, cell, cell)
-          if (value === 1) {
-            context.strokeStyle = '#41465B'
-            context.strokeRect(left + 0.5, top + 0.5, cell - 1, cell - 1)
-          } else {
-            context.fillStyle = '#34394D'
-            context.fillRect(left + cell * 0.48, top + cell * 0.48, cell * 0.04, cell * 0.04)
-          }
-        })
-      })
-
-      if (hintCell) {
-        context.fillStyle = '#71608E'
-        context.fillRect(hintCell.x * cell, hintCell.y * cell, cell, cell)
+      if (hintX !== undefined && hintY !== undefined) {
+        pixels.strokeStyle = '#ffda94'
+        pixels.strokeRect(hintX * TILE + 2.5, hintY * TILE + 2.5, 19, 19)
+        pixels.fillStyle = '#ffda9450'
+        pixels.fillRect(hintX * TILE + 3, hintY * TILE + 3, 18, 18)
       }
 
-      context.strokeStyle = '#FFC66D'
-      context.lineWidth = cell * 0.05
-      context.strokeRect(
-        (exitPosition.x + 0.25) * cell,
-        (exitPosition.y + 0.25) * cell,
-        cell * 0.5,
-        cell * 0.5,
-      )
+      const x = exitX * TILE
+      const y = exitY * TILE
+      const open = status === 'won' ? (still ? 1 : Math.min(1, elapsed / AIRLOCK_MS)) : 0
+      pixels.fillStyle = '#242433'
+      pixels.fillRect(x + 1, y + 3, 22, 19)
+      pixels.fillStyle = chamberPalettes[stage].signal
+      pixels.fillRect(x + 2, y + 3, 20, 2)
+      pixels.fillRect(x + 3, y + 5, 2, 14)
+      pixels.fillRect(x + 19, y + 5, 2, 14)
+      pixels.fillStyle = phase || open ? '#ffda94' : '#d39857'
+      pixels.fillRect(x + 5, y + 7, 14, 12)
+      pixels.fillStyle = '#68506b'
+      const door = Math.round(7 * (1 - open))
+      pixels.fillRect(x + 5, y + 7, door, 11)
+      pixels.fillRect(x + 19 - door, y + 7, door, 11)
+      pixels.fillStyle = '#ffda94'
+      pixels.fillRect(x + 9, y + 20, 6, 1)
 
-      context.beginPath()
-      context.arc(
-        (playerPosition.x + 0.5) * cell,
-        (playerPosition.y + 0.5) * cell,
-        cell * 0.23,
-        0,
-        Math.PI * 2,
-      )
-      context.fillStyle = '#B9A5E8'
-      context.fill()
+      const px = Math.round((origin.x + (playerPosition.x - origin.x) * walk) * TILE)
+      const py = Math.round((origin.y + (playerPosition.y - origin.y) * walk) * TILE)
+      const image = sprite.current
+      if (image?.complete && image.naturalWidth) {
+        const frame = origin !== playerPosition && walk < 1 ? 1 + Math.floor(walk * 3) : 0
+        pixels.drawImage(image, frame * TILE, spriteRow[facing] * TILE, TILE, TILE, px, py - phase, TILE, TILE)
+      } else {
+        pixels.fillStyle = '#f2e3c4'
+        pixels.fillRect(px + 6, py + 4, 12, 16)
+      }
+      context.imageSmoothingEnabled = false
+      context.clearRect(0, 0, pixelWidth, pixelHeight)
+      context.drawImage(layer, 0, 0, pixelWidth, pixelHeight)
+    }
+
+    function tick(now: number) {
+      if (now - lastFrame > FRAME_INTERVAL_MS) {
+        draw(now)
+        lastFrame = now
+      }
+      if (status === 'playing' || (status === 'won' && now - beginning < CELEBRATION_MS)) {
+        frameId = requestAnimationFrame(tick)
+      }
     }
 
     draw()
-    const observer = new ResizeObserver(draw)
-    observer.observe(canvas)
-    window.addEventListener('resize', draw)
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', draw)
+    if (!reducedMotion && !prefs.matches && (status === 'playing' || status === 'won')) {
+      frameId = requestAnimationFrame(tick)
     }
-  }, [columns, rows, grid, playerPosition, exitPosition, hintCell])
+    const resize = () => {
+      if (!canvas) return
+      bounds = canvas.getBoundingClientRect()
+      draw()
+    }
+    const observer = new ResizeObserver(resize)
+    observer.observe(canvas)
+    window.addEventListener('resize', resize)
+    sprite.current?.addEventListener('load', resize)
+    function motionChanged() {
+      cancelAnimationFrame(frameId)
+      draw()
+      if (!reducedMotion && !prefs.matches && status === 'playing') frameId = requestAnimationFrame(tick)
+    }
+    prefs.addEventListener('change', motionChanged)
+    const image = sprite.current
+    return () => {
+      cancelAnimationFrame(frameId)
+      observer.disconnect()
+      window.removeEventListener('resize', resize)
+      prefs.removeEventListener('change', motionChanged)
+      image?.removeEventListener('load', resize)
+    }
+  }, [columns, rows, layout, playerX, playerY, exitX, exitY, status, hintX, hintY, facing, stage, reducedMotion])
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="maze-canvas"
+    <canvas ref={canvasRef} className="maze-canvas" role="img"
       style={{ aspectRatio: `${columns} / ${rows}` }}
-      role="img"
-      aria-label={`Maze. Player at column ${playerPosition.x + 1}, row ${playerPosition.y + 1}. Exit at column ${exitPosition.x + 1}, row ${exitPosition.y + 1}.${hintCell ? ` Hint at column ${hintCell.x + 1}, row ${hintCell.y + 1}.` : ''}`}
-    >
-      Your browser needs Canvas support to display the maze.
+      aria-label={`Maze. Player at column ${playerX + 1}, row ${playerY + 1}. Exit at column ${exitX + 1}, row ${exitY + 1}.${hintCell ? ` Hint at column ${hintCell.x + 1}, row ${hintCell.y + 1}.` : ''}`}>
+      The maze requires Canvas support.
     </canvas>
   )
 }

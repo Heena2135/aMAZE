@@ -11,8 +11,10 @@ export function stageFor(profile: Profile): number {
 export function createLevel(profile: Profile, seed: number, selectedStage = stageFor(profile), mode: Mode = profile.settings.mode) {
   const personalize = mode === 'adaptive' && selectedStage >= 2
   const size = sizes[selectedStage]
-  const maze = selectMaze({ size, seed, personalize, profile })
-  const stageReason = selectedStage < 2 && mode === 'adaptive'
+  const maze = selectMaze({
+    size, seed, personalize, profile, collectBaseline: mode === 'adaptive' && selectedStage === 1,
+  })
+  const stageReason = selectedStage === 0 && mode === 'adaptive'
     ? 'Baseline experiment. Junction choices can inform later stages.'
     : maze.reason
   return { ...maze, reason: stageReason, stage: selectedStage, size, mode,

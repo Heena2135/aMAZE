@@ -52,3 +52,42 @@ Local Node measurements after 15 warm-up runs. For 100 complete selections at 15
 - **Documentation:** added `AGENTS.md`, `DEVELOPMENT.md`, and `LEARNING.md`. Replaced the Vite starter README with project instructions and technical documentation.
 
 A clean offline `npm ci` in a temporary workspace reproduced all 14 tests, type checking, linting, and the production build. The two workflow YAML files parsed locally.
+
+## Immersive redesign
+
+### Screens and presentation
+
+The game now opens on an original pixel-art observation deck. New Game leads to the six-line sickbay encounter, with keyboard and pointer controls and optional skip. Continue returns to the available experiment without replaying the encounter. A journey map shows unlocked chambers. During play, a compact HUD and Vey's communications window replace the dashboard. The pause menu preserves the active game, and restarts and progress changes require confirmation. Completion shows an airlock opening and a measured research note. Amaze adds a narrative wrap-up, followed by unlimited new Amaze layouts. The research journal separates measured behavior from evaluated predictions and retains JSON export and historical comparisons.
+
+### Architecture and asset decisions
+
+- React owns screen transitions, input, first-encounter state, and optional Web Audio. Maze, Player, GameEngine, progression rules, event aggregation, and the predictive profile remain independent of presentation.
+- Native pixel tiles and sprite frames are scaled on a high-DPI canvas. Rendering separates the tile layer from animated characters and the exit. Motion responds to both the app setting and the browser preference. See [the artwork contract](docs/ARTWORK.md) for source filenames, frame layout, and asset replacement.
+- Stage styling and square game tiles are driven by the stage index. Existing Standard mode and profile storage are compatible. The intro marker uses a separate small LocalStorage key; Continue after reload starts a fresh layout at the unlocked stage, since active attempts remain session-only.
+
+### Adaptive evidence
+
+Sampled seeds 0–127 at each existing size. Before adjustment, 26 of 128 Observation shortest routes had no junction. Adaptive Observation now tries up to five deterministic seeds and selects the first BFS-validated route containing a junction and at most six additional moves. It falls back to the original seed when no candidate qualifies. In the same sample, 4 of 128 adaptive Observation routes lacked a shortest-route junction. This measures opportunities in those layouts and gives no guarantee about what players will choose. Standard mode still uses the first seed. Existing Markov confidence and abstention rules, adaptive scoring, and stage gates are preserved.
+
+### Validation
+
+- TypeScript, ESLint, all 16 Vitest tests, and the production build passed. New tests cover Observation determinism, connectivity and the route-length cap, plus dialogue cooldowns.
+- Headless Chrome exercised a production build served under a local `/amaze/` subpath and loaded the Vite development app on port 5174. The campaign checks covered the intro, skip, title and Continue, all five stages, keyboard and touch input, pause and restart, local storage, the research journal, mode and sound preferences, reduced motion, and a 390-pixel viewport at 3× density.
+- Chrome loaded `EventTracker.ts` in the development build and did not reproduce `ERR_BLOCKED_BY_CLIENT`. The module retains its existing name. The tested Chrome profile used no third-party browser extensions.
+- The build reports about 98.7 kB gzipped JavaScript and 3.8 kB gzipped CSS. The observation backdrop is about 60 kB. Physical devices, Safari, audible sound quality, and additional accessibility polish remain open.
+
+Captured desktop and mobile views in the [screenshot gallery](docs/SCREENSHOTS.md).
+
+### Gameplay immersion refinement
+
+Chamber introductions and completion observations live beside the maze. Vey’s line reveal, communication pulse, skip controls and keyboard shortcuts are presentation-only. Layout explanations are available in the optional journal, alongside an interactive comparison of recent route efficiency and collision rates. Headless Chrome verified the production campaign, mobile touch, sound preferences and reduced motion. All 16 Vitest tests, TypeScript, ESLint and the production build passed.
+
+### Production architecture review
+
+- Split the title, chamber, encounter, journey map, settings, and journal into a screen layer. The application shell retains state needed when navigating away from an active chamber. Moved `Experiment` and `LevelManager` to the application-level `game` directory, leaving `engine` responsible for game rules.
+- Isolated the AudioContext lifecycle, moved shared metrics into their calculator module, and kept the approved Vey rendering separate from the dialogue policy. Centralized selected thresholds without changing their values.
+- The profile boundary now rejects fractional counters and drops unknown fields before aggregation or export. Timings and confidence still support decimals and the existing v1 format is unchanged.
+- Cached the static Canvas tile raster per mounted chamber and reuse measured bounds until a resize. Browser instrumentation counted zero new static tile paints across a successful move, a return move, and a collision. Foreground animation still redraws at a throttled cadence. The production JavaScript is about 92 kB gzipped and CSS is about 5 kB gzipped. The largest runtime image is the 60 kB observation backdrop. Repository screenshots are documentation assets.
+- Removed unused Vite images, icons, former dashboard components, prototype Vey PNGs, and obsolete portrait styles. Kept approved SVG originals, active artwork, screenshots, the lockfile, and workflows.
+- Checked source and locally reachable Git history for common credential signatures and ignored artifact paths. No matches surfaced. The public README author credit and links are intentional. This was an inspection, not proof that no secret ever existed.
+- Added [architecture notes](docs/ARCHITECTURE.md), [contributor guidance](CONTRIBUTING.md), and a [changelog](CHANGELOG.md).

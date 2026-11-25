@@ -66,13 +66,16 @@ export class GameEngine {
     return this.status
   }
 
+  public getMoveCounts() {
+    return { moveCount: this.player.getMoveCount(), collisionCount: this.player.getCollisionCount() }
+  }
+
   public getSnapshot(): GameSnapshot {
     return {
       grid: this.maze.getGrid(),
       playerPosition: this.player.getPosition(),
       exitPosition: { ...this.exitPosition },
-      moveCount: this.player.getMoveCount(),
-      collisionCount: this.player.getCollisionCount(),
+      ...this.getMoveCounts(),
       status: this.status,
     }
   }

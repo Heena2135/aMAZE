@@ -1,5 +1,5 @@
 import { summarize } from '../analytics/MetricsCalculator.ts'
-import type { SessionMetrics } from '../analytics/SessionAnalyzer'
+import type { SessionMetrics } from '../analytics/MetricsCalculator'
 
 export function nextDifficulty(current: number, metrics: SessionMetrics, completed: number): number {
   if (completed < 2) return current

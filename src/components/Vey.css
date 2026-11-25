@@ -1,0 +1,35 @@
+.vey { display: block; width: 100%; aspect-ratio: 1; }
+.vey-posture { transform-origin: 50px 64px; animation: vey-posture var(--pose-time, 4s) ease-in-out infinite; }
+.vey-limb { animation: vey-limb var(--pose-time, 4s) ease-in-out infinite; }
+.vey-left-arm { transform-origin: 32px 49px; }
+.vey-right-arm { transform-origin: 68px 49px; }
+.vey-left-leg { transform-origin: 37px 64px; }
+.vey-right-leg { transform-origin: 63px 64px; }
+.vey-center-leg { transform-origin: 50px 65px; animation-delay: -.2s; }
+.vey-signal { animation: vey-signal var(--signal-time, 3.2s) ease-in-out infinite; }
+.vey-signal[data-speaking="true"] { animation: vey-speak .52s ease-in-out var(--speech-beats), vey-signal var(--signal-time, 3.2s) ease-in-out var(--speech-time) infinite; }
+.vey-sparkles path { animation: vey-signal .85s ease-in-out infinite alternate; }
+.vey-sparkles path:nth-child(2) { animation-delay: -.4s; }
+.vey-sparkles path:nth-child(3) { animation-delay: -.65s; }
+
+.vey[data-expression="curious"] { --rise: 1px; --lean: 3deg; --signal-time: 2.5s; }
+.vey[data-expression="thinking"] { --rise: 1px; --signal-time: 4s; --pose-time: 4.6s; }
+.vey[data-expression="thinking"] .vey-left-arm { --swing: -7deg; }
+.vey[data-expression="thinking"] .vey-right-arm { --swing: 7deg; }
+.vey[data-expression="excited"] { --rise: -2px; --signal-time: .78s; --pose-time: 1.2s; }
+.vey[data-expression="excited"] .vey-left-arm { --swing: 19deg; }
+.vey[data-expression="excited"] .vey-right-arm { --swing: -19deg; }
+.vey[data-expression="concerned"] { --rise: 3px; --signal-time: 3.6s; }
+.vey[data-expression="celebrating"] { --rise: -6px; --lean: -2deg; --signal-time: .95s; --pose-time: .95s; }
+.vey[data-expression="celebrating"] .vey-left-arm { --swing: 5deg; }
+.vey[data-expression="celebrating"] .vey-right-arm { --swing: -5deg; }
+
+@keyframes vey-posture { 50% { transform: translateY(var(--rise, -1px)) rotate(var(--lean, 0deg)); } }
+@keyframes vey-limb { 50% { transform: rotate(var(--swing, 2deg)); } }
+@keyframes vey-signal { 50% { opacity: .56; } }
+@keyframes vey-speak { 20%, 65% { opacity: .58; } 42%, 85% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .vey *, .vey { animation: none !important; }
+}
+[data-reduced-motion="true"] .vey *, [data-reduced-motion="true"] .vey { animation: none !important; }

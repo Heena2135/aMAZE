@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest'
 import { routeDirection } from '../algorithms/MazeAnalyzer.ts'
 import { addResult, freshProfile } from '../analytics/PlayerProfile.ts'
-import { emptyMetrics } from '../analytics/SessionAnalyzer.ts'
+import { emptyMetrics } from '../analytics/MetricsCalculator.ts'
 import { createLevel } from './LevelManager.ts'
 import { Experiment } from './Experiment.ts'
 

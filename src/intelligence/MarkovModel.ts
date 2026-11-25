@@ -13,6 +13,10 @@ export function emptyModel(): Model {
   return { initial: emptyCounts(), left: emptyCounts(), right: emptyCounts(), straight: emptyCounts(), reverse: emptyCounts() }
 }
 
+export const MIN_PREDICTION_SAMPLES = 8
+const MIN_CONDITIONAL_SAMPLES = 5
+const MIN_PROBABILITY_LEAD = 0.12
+
 const clockwise: Direction[] = ['up', 'right', 'down', 'left']
 
 export function relativeTurn(heading: Direction, next: Direction): Turn {
@@ -24,7 +28,7 @@ export function relativeTurn(heading: Direction, next: Direction): Turn {
 export function predict(model: Model, previous: Turn | 'initial', options: readonly Turn[]) {
   const row = model[previous]
   const conditionalSamples = options.reduce((sum, turn) => sum + row[turn], 0)
-  const counts = conditionalSamples >= 5 ? row : marginalCounts(model)
+  const counts = conditionalSamples >= MIN_CONDITIONAL_SAMPLES ? row : marginalCounts(model)
   const samples = options.reduce((sum, turn) => sum + counts[turn], 0)
   const probabilities = emptyCounts()
   for (const turn of options) probabilities[turn] = (counts[turn] + 1) / (samples + options.length)
@@ -34,7 +38,7 @@ export function predict(model: Model, previous: Turn | 'initial', options: reado
   const confidence = best ? probabilities[best] : 0
   return {
     probabilities, confidence, samples,
-    choice: best && second && samples >= 8 && confidence - probabilities[second] >= 0.12 ? best : null,
+    choice: best && second && samples >= MIN_PREDICTION_SAMPLES && confidence - probabilities[second] >= MIN_PROBABILITY_LEAD ? best : null,
   }
 }
 

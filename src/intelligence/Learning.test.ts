@@ -1,10 +1,11 @@
 import { expect, it } from 'vitest'
 import { EventTracker, validEvent } from '../analytics/EventTracker.ts'
-import { emptyMetrics, SessionAnalyzer } from '../analytics/SessionAnalyzer.ts'
+import { SessionAnalyzer } from '../analytics/SessionAnalyzer.ts'
+import { emptyMetrics } from '../analytics/MetricsCalculator.ts'
 import { freshProfile } from '../analytics/PlayerProfile.ts'
 import { summarize } from '../analytics/MetricsCalculator.ts'
 import { decodeProfile, loadProfile, saveProfile } from '../storage/ProfileStorage.ts'
-import { createLevel, stageFor } from '../engine/LevelManager.ts'
+import { createLevel, stageFor } from '../game/LevelManager.ts'
 import { emptyModel, predict, relativeTurn } from './MarkovModel.ts'
 import { nextDifficulty } from './DifficultyController.ts'
 
@@ -104,4 +105,22 @@ it('scores a confident prediction before updating it with a different decision',
   expect(result.metrics).toMatchObject({ predictions: 1, correct: 0 })
   expect(result.model.initial.straight).toBe(1)
   expect(model.initial.straight).toBe(0)
+})
+
+it('finds more Observation routes with genuine junctions without lengthening a route by more than six moves', async () => {
+  const { openNeighbors } = await import('../algorithms/PathFinder.ts')
+  const profile = freshProfile()
+  const branches = (level: ReturnType<typeof createLevel>) => level.topology.route.slice(1, -1)
+    .filter((position) => openNeighbors(level.grid, position).length >= 3).length
+  let improved = 0
+  for (let seed = 0; seed < 32; seed++) {
+    const standard = createLevel(profile, seed, 1, 'standard')
+    const adaptive = createLevel(profile, seed, 1, 'adaptive')
+    expect(adaptive).toEqual(createLevel(profile, seed, 1, 'adaptive'))
+    expect(adaptive.topology.route.at(-1)).toEqual(adaptive.exit)
+    expect(adaptive.topology.route.length).toBeLessThanOrEqual(standard.topology.route.length + 6)
+    expect(branches(adaptive)).toBeGreaterThanOrEqual(branches(standard) ? 1 : 0)
+    improved += Number(branches(standard) === 0 && branches(adaptive) > 0)
+  }
+  expect(improved).toBeGreaterThan(0)
 })
